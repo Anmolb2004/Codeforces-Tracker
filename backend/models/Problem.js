@@ -1,4 +1,3 @@
-// models/Problem.js
 const mongoose = require('mongoose');
 
 const problemSchema = new mongoose.Schema({
@@ -20,22 +19,25 @@ const problemSchema = new mongoose.Schema({
   },
   rating: {
     type: Number,
-    default: null
+    index: true
   },
   tags: [{
-    type: String
+    type: String,
+    index: true
   }],
   solvedCount: {
     type: Number,
     default: 0
-  }
+  },
+  solvedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student'
+  }]
 }, {
   timestamps: true
 });
 
 // Compound index for efficient queries
 problemSchema.index({ contestId: 1, index: 1 }, { unique: true });
-problemSchema.index({ rating: 1 });
-problemSchema.index({ tags: 1 });
 
 module.exports = mongoose.model('Problem', problemSchema);

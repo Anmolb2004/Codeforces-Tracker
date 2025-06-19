@@ -87,27 +87,33 @@ const ContestHistory = ({ student }) => {
                 </tr>
               </thead>
               <tbody>
-                {data?.contests?.map((contest) => (
-                  <tr
-                    key={contest._id}
-                    className={`border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}
-                  >
-                    <td className={`p-3 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                      {contest._id}
-                    </td>
-                    <td className={`p-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {contest.rank || 'N/A'}
-                    </td>
-                    <td className={`p-3 font-semibold ${getRatingChangeColor(contest.ratingChange)}`}>
-                      {contest.ratingChange > 0 ? '+' : ''}{contest.ratingChange || 0}
-                    </td>
-                    <td className={`p-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {contest.problemsSolved}/{contest.totalProblems}
-                    </td>
-                    <td className={`p-3 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {new Date(contest.submissionTime * 1000).toLocaleDateString()}
-                    </td>
-                  </tr>
+               {data?.contests?.map((contest) => (
+  <tr key={contest._id} className={`border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+    <td className={`p-3 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+      {contest.contestName || contest._id}
+    </td>
+    <td className={`p-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+      {contest.rank || 'N/A'}
+    </td>
+    <td className={`p-3 font-semibold ${getRatingChangeColor(contest.ratingChange)}`}>
+      {contest.ratingChange > 0 ? '+' : ''}{contest.ratingChange || 0}
+    </td>
+    <td className={`p-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+  {contest.problemsSolved}/
+  {
+    contest.problemsSolved < 4
+      ? 7
+      : contest.problemsSolved === 4
+      ? 8
+      : 9
+  }
+  {console.log(contest)};
+</td>
+
+    <td className={`p-3 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+      {new Date(contest.submissionTime * 1000).toLocaleDateString()}
+    </td>
+  </tr>
                 ))}
               </tbody>
             </table>

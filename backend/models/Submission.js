@@ -8,7 +8,8 @@ const submissionSchema = new mongoose.Schema({
   },
   contestId: {
     type: Number,
-    required: true
+    required: true,
+    index: true
   },
   problemIndex: {
     type: String,
@@ -20,15 +21,24 @@ const submissionSchema = new mongoose.Schema({
   },
   problemRating: {
     type: Number,
-    default: null
+    index: true
   },
+  problemTags: [{
+    type: String
+  }],
   cfHandle: {
     type: String,
-    required: true
+    required: true,
+    index: true
+  },
+  student: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student'
   },
   verdict: {
     type: String,
-    required: true
+    required: true,
+    index: true
   },
   programmingLanguage: {
     type: String,
@@ -36,20 +46,28 @@ const submissionSchema = new mongoose.Schema({
   },
   submissionTimeSeconds: {
     type: Number,
-    required: true
+    required: true,
+    index: true
   },
   ratingChange: {
+    type: Number
+  },
+  rank: {
+    type: Number
+  },
+  totalProblems: {
     type: Number,
     default: null
   },
-  rank: {
-    type: Number,
-    default: null
+  contestName: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true
 });
 
 submissionSchema.index({ cfHandle: 1, submissionTimeSeconds: -1 });
+submissionSchema.index({ cfHandle: 1, verdict: 1 });
 
 module.exports = mongoose.model('Submission', submissionSchema);

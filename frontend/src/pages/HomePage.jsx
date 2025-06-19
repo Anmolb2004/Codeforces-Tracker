@@ -179,10 +179,13 @@ const HomePage = () => {
       <section id="stats" className="py-12 px-4 sm:py-16">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-white mb-4">
+            <h2 className={`text-3xl font-extrabold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <span className="bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">Platform Statistics</span>
+              </h2>
+            {/* <h2 className="text-3xl font-extrabold text-white mb-4">
               Platform Statistics
-            </h2>
-            <p className="text-base text-blue-100 max-w-xl mx-auto">
+            </h2> */}
+             <p className={`text-lg sm:text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-8 font-medium max-w-2xl mx-auto`}>
               Join thousands of competitive programmers using our platform
             </p>
           </div>
@@ -198,10 +201,10 @@ const HomePage = () => {
                 <div className={`w-12 h-12 bg-gradient-to-r ${stat.color} rounded-lg flex items-center justify-center mx-auto mb-3 shadow-sm`}>
                   <span className="text-xl">{stat.icon}</span>
                 </div>
-                <div className="text-2xl font-bold text-white mb-1">
+                <div className={`text-lg sm:text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}  font-medium max-w-2xl mx-auto`}>
                   {stat.value}
                 </div>
-                <div className="text-sm text-blue-100">
+                <div className={`text-lg sm:text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-8 font-medium max-w-2xl mx-auto`}>
                   {stat.label}
                 </div>
               </div>
@@ -218,7 +221,7 @@ const HomePage = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-md flex items-center justify-center">
                 <span className="text-white font-bold text-sm">CF</span>
               </div>
-              <span className="text-xl font-bold text-white font-mono">CodeTracker</span>
+              <span className={`text-lg sm:text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}  font-medium`}>CodeTracker</span>
             </div>
             
             <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto">

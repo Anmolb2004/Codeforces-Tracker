@@ -10,20 +10,32 @@ class CronService {
     this.syncTime = '0 2 * * *'; // Default: 2 AM daily
     this.inactivityCheckTime = '0 3 * * *'; // Default: 3 AM daily
   }
-
+  async syncData() {
+    try {
+      console.log('🔄 Starting data sync...');
+      await codeforcesService.syncContests();
+      await codeforcesService.syncAllStudents();
+      console.log('✅ Sync completed successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Sync failed:', error);
+      // Add retry logic or notification here
+      return false;
+    }
+  }
+  
   startSyncJob(cronTime = this.syncTime) {
     if (this.syncJob) {
       this.syncJob.stop();
     }
 
     this.syncJob = cron.schedule(cronTime, async () => {
-      console.log('🔄 Starting scheduled data sync...');
-      try {
-        await codeforcesService.syncContests();
-        await codeforcesService.syncAllStudents();
-        console.log('✅ Scheduled sync completed successfully');
-      } catch (error) {
-        console.error('❌ Scheduled sync failed:', error.message);
+      console.log('⏰ Running scheduled sync...');
+      const success = await this.syncData();
+      if (!success) {
+        // Implement retry logic if needed
+        console.log('⏳ Retrying sync in 10 minutes...');
+        setTimeout(() => this.syncData(), 600000);
       }
     }, {
       scheduled: true,

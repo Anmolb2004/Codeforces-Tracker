@@ -31,7 +31,7 @@ const StudentProfile = () => {
   }, [id]);
 
   const handleClose = () => {
-    navigate('/');
+    navigate('/dashboard');
   };
 
   const getRatingColor = (rating) => {

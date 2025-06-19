@@ -33,7 +33,7 @@ console.log('studentsRoutes:', typeof studentsRoutes);
 console.log('contestsRoutes:', typeof contestsRoutes);
 console.log('syncRoutes:', typeof syncRoutes);
 
-
+const problemUpdateService = require('./services/problemUpdateService');
 
 // Middleware
 // app.use(cors());
@@ -73,6 +73,7 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
   });
 }
+problemUpdateService.startUpdateJob();
 
 // Error handling middleware
 app.use((err, req, res, next) => {

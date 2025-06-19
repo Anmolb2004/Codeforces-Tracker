@@ -25,6 +25,10 @@ const contestSchema = new mongoose.Schema({
   durationSeconds: {
     type: Number,
     required: true
+  },
+  totalProblems: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

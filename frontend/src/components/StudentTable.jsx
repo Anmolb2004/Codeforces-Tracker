@@ -511,7 +511,7 @@ const StudentTable = () => {
                       <td className={`px-4 py-3 font-medium ${getRatingColor(student.maxRating)}`}>
                         {student.maxRating || '-'}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{student.totalSolved || '-'}</span>
                         </div>
@@ -602,19 +602,19 @@ const StudentTable = () => {
             <div className="flex flex-wrap gap-4">
               <div className="text-sm">
                 <span className="text-gray-600 dark:text-gray-400">Avg Rating:</span>{' '}
-                <span className="font-medium">
+                <span className=" py-3 text-sm text-gray-900 dark:text-white">
                   {Math.round(sortedStudents.reduce((acc, s) => acc + (s.currentRating || 0), 0) / sortedStudents.length) || 0}
                 </span>
               </div>
               <div className="text-sm">
                 <span className="text-gray-600 dark:text-gray-400">Max Rating:</span>{' '}
-                <span className="font-medium">
+                <span className="py-3 text-sm text-gray-900 dark:text-white">
                   {Math.max(...sortedStudents.map(s => s.maxRating || 0)) || 0}
                 </span>
               </div>
               <div className="text-sm">
                 <span className="text-gray-600 dark:text-gray-400">Total Solved:</span>{' '}
-                <span className="font-medium">
+                <span className="py-3 text-sm text-gray-900 dark:text-white">
                   {sortedStudents.reduce((acc, s) => acc + (s.totalSolved || 0), 0)}
                 </span>
               </div>

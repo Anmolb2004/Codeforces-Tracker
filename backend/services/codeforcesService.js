@@ -13,6 +13,28 @@ class CodeforcesService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  async fetchProblemDetails(contestId, problemIndex) {
+    try {
+      const response = await axios.get(`${this.baseURL}/problemset.problem?contestId=${contestId}&problemIndex=${problemIndex}`);
+      return response.data.result.problem;
+    } catch (error) {
+      console.error(`Failed to fetch problem ${contestId}${problemIndex}:`, error.message);
+      return null;
+    }
+  }
+
+  async fetchContestStandings(contestId, handle) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/contest.standings?contestId=${contestId}&handles=${handle}&showUnofficial=false`
+      );
+      return response.data.result;
+    } catch (error) {
+      console.error(`Failed to fetch standings for contest ${contestId}:`, error.message);
+      return null;
+    }
+  }
+
   async fetchUserInfo(handle) {
     try {
       const response = await axios.get(`${this.baseURL}/user.info?handles=${handle}`);
@@ -51,7 +73,7 @@ class CodeforcesService {
     }
   }
 
-  async syncStudentData(student) {
+async syncStudentData(student) {
     try {
       // Fetch user info
       const userInfo = await this.fetchUserInfo(student.cfHandle);
@@ -78,6 +100,19 @@ class CodeforcesService {
           lastSubmissionTime = submission.creationTimeSeconds;
         }
 
+        // Get problem details if we don't have them
+        let problemDetails = {};
+        if (submission.problem.rating === undefined) {
+          const details = await this.fetchProblemDetails(submission.contestId, submission.problem.index);
+          if (details) {
+            problemDetails = {
+              rating: details.rating,
+              tags: details.tags
+            };
+          }
+          await this.sleep(this.delay);
+        }
+
         // Save submission to database
         await Submission.findOneAndUpdate(
           { submissionId: submission.id },
@@ -86,13 +121,15 @@ class CodeforcesService {
             contestId: submission.contestId,
             problemIndex: submission.problem.index,
             problemName: submission.problem.name,
-            problemRating: submission.problem.rating,
+            problemRating: submission.problem.rating || problemDetails.rating,
+            problemTags: submission.problem.tags || problemDetails.tags,
             cfHandle: student.cfHandle,
+            student: student._id,
             verdict: submission.verdict,
             programmingLanguage: submission.programmingLanguage,
             submissionTimeSeconds: submission.creationTimeSeconds
           },
-          { upsert: true }
+          { upsert: true, new: true }
         );
 
         // Count unique solved problems
@@ -105,18 +142,43 @@ class CodeforcesService {
       const ratingChanges = await this.fetchUserRating(student.cfHandle);
       await this.sleep(this.delay);
 
-      // Update submissions with rating changes
+      // Process each contest to get total problems and contest name
       for (const change of ratingChanges) {
-        await Submission.updateMany(
-          { 
-            cfHandle: student.cfHandle,
-            contestId: change.contestId
-          },
-          {
-            ratingChange: change.newRating - change.oldRating,
-            rank: change.rank
-          }
-        );
+        try {
+          const standings = await this.fetchContestStandings(change.contestId, student.cfHandle);
+          await this.sleep(this.delay);
+
+          const totalProblems = standings?.problems?.length || 6;
+
+          // Update contest info
+          await Contest.findOneAndUpdate(
+            { contestId: change.contestId },
+            {
+              contestId: change.contestId,
+              name: change.contestName,
+              totalProblems: change.totalProblems,
+              startTimeSeconds: change.ratingUpdateTimeSeconds,
+              type: change.contestName.includes('Div.') ? 'CF' : 'Other'
+            },
+            { upsert: true }
+          );
+
+          // Update submissions with contest data
+          await Submission.updateMany(
+            { 
+              cfHandle: student.cfHandle,
+              contestId: change.contestId
+            },
+            {
+              ratingChange: change.newRating - change.oldRating,
+              rank: change.rank,
+              contestName: change.contestName,
+              totalProblems: totalProblems
+            }
+          );
+        } catch (err) {
+          console.error(`Error processing contest ${change.contestId}:`, err.message);
+        }
       }
 
       // Update student stats
@@ -125,7 +187,6 @@ class CodeforcesService {
 
       await student.save();
       return student;
-
     } catch (error) {
       console.error(`Error syncing data for ${student.cfHandle}:`, error.message);
       throw error;
@@ -148,6 +209,8 @@ class CodeforcesService {
 
     console.log('Sync completed for all students');
   }
+
+ 
 
   async syncContests() {
     try {
@@ -174,5 +237,7 @@ class CodeforcesService {
     }
   }
 }
+
+
 
 module.exports = new CodeforcesService();

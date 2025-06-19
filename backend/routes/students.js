@@ -4,6 +4,7 @@ const Student = require('../models/Student');
 const Submission = require('../models/Submission');
 const EmailLog = require('../models/Emaillog');
 const codeforcesService = require('../services/codeforcesService');
+const problemController = require('../services/problemController');
 
 // Get all students
 router.get('/', async (req, res) => {
@@ -26,6 +27,9 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.get('/:id/problems', problemController.getProblemStats);
+
 
 // Add new student
 router.post('/', async (req, res) => {
@@ -175,6 +179,8 @@ router.get('/:id/profile', async (req, res) => {
   }
 });
 
+
+
 // Get contest history
 router.get('/:id/contests', async (req, res) => {
   try {
@@ -196,8 +202,12 @@ router.get('/:id/contests', async (req, res) => {
         }
       },
       {
+        $sort: { submissionTimeSeconds: -1 }
+      },
+      {
         $group: {
           _id: '$contestId',
+          contestName: { $first: '$contestName' },
           ratingChange: { $first: '$ratingChange' },
           rank: { $first: '$rank' },
           submissionTime: { $first: '$submissionTimeSeconds' },
@@ -206,7 +216,20 @@ router.get('/:id/contests', async (req, res) => {
               $cond: [{ $eq: ['$verdict', 'OK'] }, 1, 0]
             }
           },
-          totalProblems: { $sum: 1 }
+          totalProblems: { $first: '$totalProblems' }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          contestName: 1,
+          ratingChange: 1,
+          rank: 1,
+          submissionTime: 1,
+          problemsSolved: 1,
+          totalProblems: {
+            $ifNull: ['$totalProblems', 6] // Fallback to 6 if null
+          }
         }
       },
       {
