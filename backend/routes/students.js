@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
 const Submission = require('../models/Submission');
-const EmailLog = require('../models/Emaillog');
+const EmailLog = require('../models/EmailLog');
 const codeforcesService = require('../services/codeforcesService');
 const problemController = require('../services/problemController');
 
