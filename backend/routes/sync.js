@@ -3,6 +3,7 @@ const router = express.Router();
 const cronService = require('../services/cronService');
 const codeforcesService = require('../services/codeforcesService');
 const problemUpdateService = require('../services/problemUpdateService');
+const mongoose = require('mongoose');
 
 // Get cron job status
 router.get('/status', (req, res) => {

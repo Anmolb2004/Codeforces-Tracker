@@ -17,21 +17,14 @@ app.use(cors({
 
 app.use(express.json());
 
-// app.options('*', cors());
-
-// app.options('*', cors());
-// // Enable pre-flight request handling
-// app.options('*', (req, res) => {
-//   res.sendStatus(200);
-// });
 
 const studentsRoutes = require('./routes/students');
 const contestsRoutes = require('./routes/contests');
 const syncRoutes = require('./routes/sync');
 const cronService = require('./services/cronService');
-console.log('studentsRoutes:', typeof studentsRoutes);
-console.log('contestsRoutes:', typeof contestsRoutes);
-console.log('syncRoutes:', typeof syncRoutes);
+// console.log('studentsRoutes:', typeof studentsRoutes);
+// console.log('contestsRoutes:', typeof contestsRoutes);
+// console.log('syncRoutes:', typeof syncRoutes);
 
 const problemUpdateService = require('./services/problemUpdateService');
 
