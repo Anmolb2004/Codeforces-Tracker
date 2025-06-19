@@ -3,39 +3,30 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// app.use(cors());
-// ✅ CORS Configuration
+// CORS Configuration
 app.use(cors({
-  origin: 'http://localhost:5173', // exact frontend URL
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
 
-app.use(express.json());
-
-
-const studentsRoutes = require('./routes/students');
-const contestsRoutes = require('./routes/contests');
-const syncRoutes = require('./routes/sync');
-const cronService = require('./services/cronService');
-console.log('studentsRoutes:', typeof studentsRoutes);
-console.log('contestsRoutes:', typeof contestsRoutes);
-console.log('syncRoutes:', typeof syncRoutes);
-
-const problemUpdateService = require('./services/problemUpdateService');
-
 // Middleware
-// app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Routes
+const studentsRouter = require('./routes/students');
+const contestsRouter = require('./routes/contests');
+const syncRouter = require('./routes/sync');
 
-
-
+app.use('/api/students', studentsRouter);
+app.use('/api/contests', contestsRouter);
+app.use('/api/sync', syncRouter);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codeforces-tracker', {
@@ -45,18 +36,14 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codeforce
 .then(() => {
   console.log('✅ Connected to MongoDB');
   // Start cron jobs
-  cronService.startSyncJob();
-  cronService.startInactivityCheck();
+  require('./services/cronService').startSyncJob();
+  require('./services/cronService').startInactivityCheck();
+  require('./services/problemUpdateService').startUpdateJob();
 })
 .catch(err => {
   console.error('❌ MongoDB connection error:', err);
   process.exit(1);
 });
-
-// Routes
-app.use('/api/students', studentsRoutes);
-app.use('/api/contests', contestsRoutes);
-app.use('/api/sync', syncRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -66,7 +53,6 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
   });
 }
-problemUpdateService.startUpdateJob();
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -77,7 +63,7 @@ app.use((err, req, res, next) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
-  cronService.stopAllJobs();
+  require('./services/cronService').stopAllJobs();
   mongoose.connection.close(() => {
     console.log('MongoDB connection closed');
     process.exit(0);
@@ -86,7 +72,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
-  cronService.stopAllJobs();
+  require('./services/cronService').stopAllJobs();
   mongoose.connection.close(() => {
     console.log('MongoDB connection closed');
     process.exit(0);
