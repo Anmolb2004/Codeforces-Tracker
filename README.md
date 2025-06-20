@@ -7,6 +7,11 @@ This is a web-based application to manage and track student progress using Codef
 Watch the demo video of the project on Google Drive:  
 🔗 [Click to Watch Video](https://drive.google.com/file/d/1uFYhUs-w2fjOxz2lpce57NFmeq4H2BQ2/view)
 
+## 📽️ Live link
+
+Visit the live project:
+[CodeTrackers Live Site](https://codetrackers.netlify.app/)
+
 ## 📄 Documentation
 
 You can read the full project documentation here:  
