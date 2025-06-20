@@ -37,63 +37,63 @@ router.get('/', async (req, res) => {
 });
 
 // Get contest by ID
-router.get('/:contestId', async (req, res) => {
-  try {
-    const contest = await Contest.findOne({ contestId: req.params.contestId });
-    if (!contest) {
-      return res.status(404).json({ error: 'Contest not found' });
-    }
-    res.json(contest);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// router.get('/:contestId', async (req, res) => {
+//   try {
+//     const contest = await Contest.findOne({ contestId: req.params.contestId });
+//     if (!contest) {
+//       return res.status(404).json({ error: 'Contest not found' });
+//     }
+//     res.json(contest);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Get contest standings for tracked students
-router.get('/:contestId/standings', async (req, res) => {
-  try {
-    const contestId = req.params.contestId;
+// router.get('/:contestId/standings', async (req, res) => {
+//   try {
+//     const contestId = req.params.contestId;
     
-    const standings = await Submission.aggregate([
-      {
-        $match: {
-          contestId: parseInt(contestId),
-          ratingChange: { $ne: null }
-        }
-      },
-      {
-        $group: {
-          _id: '$cfHandle',
-          rank: { $first: '$rank' },
-          ratingChange: { $first: '$ratingChange' },
-          problemsSolved: {
-            $sum: {
-              $cond: [{ $eq: ['$verdict', 'OK'] }, 1, 0]
-            }
-          },
-          totalSubmissions: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'students',
-          localField: '_id',
-          foreignField: 'cfHandle',
-          as: 'student'
-        }
-      },
-      {
-        $unwind: '$student'
-      },
-      {
-        $sort: { rank: 1 }
-      }
-    ]);
+//     const standings = await Submission.aggregate([
+//       {
+//         $match: {
+//           contestId: parseInt(contestId),
+//           ratingChange: { $ne: null }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: '$cfHandle',
+//           rank: { $first: '$rank' },
+//           ratingChange: { $first: '$ratingChange' },
+//           problemsSolved: {
+//             $sum: {
+//               $cond: [{ $eq: ['$verdict', 'OK'] }, 1, 0]
+//             }
+//           },
+//           totalSubmissions: { $sum: 1 }
+//         }
+//       },
+//       {
+//         $lookup: {
+//           from: 'students',
+//           localField: '_id',
+//           foreignField: 'cfHandle',
+//           as: 'student'
+//         }
+//       },
+//       {
+//         $unwind: '$student'
+//       },
+//       {
+//         $sort: { rank: 1 }
+//       }
+//     ]);
     
-    res.json(standings);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+//     res.json(standings);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 module.exports = router;
