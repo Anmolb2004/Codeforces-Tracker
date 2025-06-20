@@ -49,7 +49,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/codeforce
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/build')));
   
-  app.get('*', (req, res) => {
+  // FIXED: Use regex pattern instead of wildcard for Express 5.x compatibility
+  app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
   });
 }

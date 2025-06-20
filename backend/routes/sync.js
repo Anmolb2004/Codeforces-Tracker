@@ -6,25 +6,25 @@ const problemUpdateService = require('../services/problemUpdateService');
 const mongoose = require('mongoose');
 
 // Get cron job status
-// router.get('/status', (req, res) => {
-//   res.json({
-//     syncStatus: cronService.getJobStatus(),
-//     problemUpdateStatus: problemUpdateService.getStatus()
-//   });
-// });
+router.get('/status', (req, res) => {
+  res.json({
+    syncStatus: cronService.getJobStatus(),
+    problemUpdateStatus: problemUpdateService.getStatus()
+  });
+});
 
 // Add to your syncRoutes.js or create a new health route
-// router.get('/health', (req, res) => {
-//   const now = new Date();
-//   res.json({
-//     status: 'OK',
-//     serverTime: now.toISOString(),
-//     uptime: process.uptime(),
-//     cronStatus: cronService.getJobStatus(),
-//     problemUpdateStatus: problemUpdateService.getStatus(),
-//     dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-//   });
-// });
+router.get('/health', (req, res) => {
+  const now = new Date();
+  res.json({
+    status: 'OK',
+    serverTime: now.toISOString(),
+    uptime: process.uptime(),
+    cronStatus: cronService.getJobStatus(),
+    problemUpdateStatus: problemUpdateService.getStatus(),
+    dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
 
 // Add to your syncRoutes.js
 router.post('/force-sync', async (req, res) => {
