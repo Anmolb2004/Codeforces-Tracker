@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE = 'https://codeforces-tracker-8lm0.onrender.com';
 
 export const useApi = (url, dependencies = []) => {
   const [data, setData] = useState(null);
