@@ -4,7 +4,6 @@ const Student = require('../models/Student');
 const Submission = require('../models/Submission');
 const EmailLog = require('../models/EmailLog');
 const codeforcesService = require('../services/codeforcesService');
-const problemController = require('../services/problemController');
 
 // Get all students
 router.get('/', async (req, res) => {
@@ -29,10 +28,129 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get student problem stats (using controller)
-router.get('/:id/problems', problemController.getProblemStats);
+// FIXED: Fast problem stats using stored data
+router.get('/:id/problems', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { days = 30 } = req.query;
 
-// Add new student - Improved version
+    const student = await Student.findById(id);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - parseInt(days));
+
+    // OPTIMIZATION: Use simple queries instead of complex aggregation
+    // Get recent accepted submissions count (for the time period)
+    const recentSolved = await Submission.countDocuments({
+      cfHandle: student.cfHandle,
+      verdict: 'OK',
+      submissionTimeSeconds: { $gte: Math.floor(daysAgo.getTime() / 1000) }
+    });
+
+    // Get recent submission activity for heatmap
+    const recentSubmissions = await Submission.find({
+      cfHandle: student.cfHandle,
+      submissionTimeSeconds: { $gte: Math.floor(daysAgo.getTime() / 1000) }
+    }).select('submissionTimeSeconds verdict');
+
+    // Process submission activity efficiently
+    const submissionActivity = {};
+    recentSubmissions.forEach(sub => {
+      const date = new Date(sub.submissionTimeSeconds * 1000);
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      submissionActivity[dateStr] = (submissionActivity[dateStr] || 0) + 1;
+    });
+
+    // Get some recent problems for display (limit to 10 for speed)
+    const recentProblems = await Submission.find({
+      cfHandle: student.cfHandle,
+      verdict: 'OK',
+      submissionTimeSeconds: { $gte: Math.floor(daysAgo.getTime() / 1000) }
+    })
+    .select('contestId problemIndex problemName problemRating problemTags submissionTimeSeconds')
+    .sort({ submissionTimeSeconds: -1 })
+    .limit(10);
+
+    // Calculate basic stats
+    const averagePerDay = recentSolved / parseInt(days);
+    const averageRating = recentProblems.reduce((sum, p) => sum + (p.problemRating || 0), 0) / recentProblems.length || 0;
+    
+    const hardestProblem = recentProblems.reduce((max, p) => 
+      (p.problemRating || 0) > (max.problemRating || 0) ? p : max, 
+      { problemRating: 0 }
+    );
+
+    res.json({
+      // Use stored totalSolved instead of calculating
+      totalSolved: student.totalSolved || 0,
+      totalSolvedAllTime: student.totalSolved || 0,
+      recentSolved,
+      averageRating,
+      averagePerDay,
+      hardestProblem: hardestProblem.problemRating ? hardestProblem : null,
+      submissionActivity,
+      recentProblems: recentProblems.map(p => ({
+        contestId: p.contestId,
+        index: p.problemIndex,
+        name: p.problemName,
+        rating: p.problemRating,
+        tags: p.problemTags,
+        solvedAt: p.submissionTimeSeconds
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error getting problem stats:', error);
+    res.status(500).json({ error: 'Failed to get problem statistics' });
+  }
+});
+
+// OPTIMIZED: Fast total solved calculation using CF API
+async function getFastTotalSolved(cfHandle) {
+  try {
+    // Method 1: Use stored value if recently updated
+    const student = await Student.findOne({ cfHandle });
+    if (student && student.lastDataSync && 
+        (Date.now() - student.lastDataSync.getTime()) < 3600000) { // 1 hour
+      return student.totalSolved || 0;
+    }
+
+    // Method 2: Quick API call to get user info (includes solved count)
+    const userInfo = await codeforcesService.fetchUserInfo(cfHandle);
+    
+    // Update student record with fresh data
+    if (student) {
+      student.totalSolved = userInfo.rating ? await getAccurateSolvedCount(cfHandle) : 0;
+      student.lastDataSync = new Date();
+      await student.save();
+      return student.totalSolved;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error('Error getting fast total solved:', error);
+    return 0;
+  }
+}
+
+// Helper to get accurate solved count when needed
+async function getAccurateSolvedCount(cfHandle) {
+  try {
+    const acceptedSubmissions = await Submission.distinct('problemId', {
+      cfHandle: cfHandle,
+      verdict: 'OK'
+    });
+    return acceptedSubmissions.length;
+  } catch (error) {
+    console.error('Error getting accurate solved count:', error);
+    return 0;
+  }
+}
+
+// IMPROVED: Add new student with immediate response
 router.post('/', async (req, res) => {
   try {
     const { name, cfHandle, email, phoneNumber } = req.body;
@@ -50,21 +168,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid Codeforces handle' });
     }
     
-    // Get total solved problems count immediately
-    let totalSolved = 0;
-    try {
-      // Get all accepted submissions for this user
-      const acceptedSubmissions = await Submission.distinct('problemId', {
-        cfHandle: cfHandle,
-        verdict: 'OK'
-      });
-      totalSolved = acceptedSubmissions.length;
-    } catch (error) {
-      console.error('Error getting total solved problems:', error);
-      // We'll continue with 0 if there's an error
-    }
-    
-    // Create student with all info
+    // Create student with CF data (fast response)
     const student = new Student({
       name,
       cfHandle,
@@ -73,44 +177,31 @@ router.post('/', async (req, res) => {
       currentRating: userInfo.rating || 0,
       maxRating: userInfo.maxRating || 0,
       rank: userInfo.rank || 'unrated',
-      totalSolved: totalSolved
+      totalSolved: 0, // Will be updated in background
+      lastDataSync: new Date()
     });
 
     await student.save();
     
-    // Return the student with all data
+    // Return immediately
     res.status(201).json(student);
     
-    // Sync detailed data asynchronously (don't wait for this)
-    setTimeout(async () => {
+    // Update totalSolved in background (don't wait)
+    setImmediate(async () => {
       try {
-        await codeforcesService.syncStudentData(student);
-        console.log(`Background sync completed for student: ${student.name}`);
+        const totalSolved = await getFastTotalSolved(cfHandle);
+        student.totalSolved = totalSolved;
+        await student.save();
+        console.log(`Background update: ${student.name} - ${totalSolved} problems solved`);
       } catch (error) {
-        console.error(`Background sync failed for student ${student.name}:`, error.message);
+        console.error(`Background update failed for ${student.name}:`, error.message);
       }
-    }, 100);
+    });
     
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
-
-// Helper function to get total solved problems
-async function getTotalSolvedProblems(cfHandle) {
-  try {
-    // Get all accepted submissions for this user
-    const acceptedSubmissions = await Submission.distinct('problemId', {
-      cfHandle: cfHandle,
-      verdict: 'OK'
-    });
-    
-    return acceptedSubmissions.length;
-  } catch (error) {
-    console.error('Error getting total solved problems:', error);
-    return 0;
-  }
-}
 
 // Update student
 router.put('/:id', async (req, res) => {
@@ -127,25 +218,26 @@ router.put('/:id', async (req, res) => {
     if (email) student.email = email;
     if (phoneNumber !== undefined) student.phoneNumber = phoneNumber;
     
-    // If CF handle changed, validate and sync
+    // If CF handle changed, validate and update
     if (cfHandle && cfHandle !== student.cfHandle) {
       const userInfo = await codeforcesService.fetchUserInfo(cfHandle);
-      const totalSolved = await getTotalSolvedProblems(cfHandle);
       
       student.cfHandle = cfHandle;
       student.currentRating = userInfo.rating || 0;
       student.maxRating = userInfo.maxRating || 0;
       student.rank = userInfo.rank || 'unrated';
-      student.totalSolved = totalSolved || 0;
+      student.totalSolved = 0; // Will be updated
+      student.lastDataSync = new Date();
       
-      // Sync submissions data asynchronously
-      setTimeout(async () => {
+      // Update totalSolved in background
+      setImmediate(async () => {
         try {
-          await codeforcesService.syncStudentData(student);
+          const totalSolved = await getFastTotalSolved(cfHandle);
+          await Student.findByIdAndUpdate(student._id, { totalSolved });
         } catch (error) {
-          console.error('Background sync error:', error);
+          console.error('Background update error:', error);
         }
-      }, 100);
+      });
     }
 
     await student.save();
@@ -181,22 +273,26 @@ router.put('/:id/handle', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    await codeforcesService.fetchUserInfo(cfHandle);
-    const totalSolved = await getTotalSolvedProblems(cfHandle);
+    const userInfo = await codeforcesService.fetchUserInfo(cfHandle);
     
     student.cfHandle = cfHandle;
-    student.totalSolved = totalSolved || 0;
+    student.currentRating = userInfo.rating || 0;
+    student.maxRating = userInfo.maxRating || 0;
+    student.rank = userInfo.rank || 'unrated';
+    student.totalSolved = 0;
+    student.lastDataSync = new Date();
     
     await student.save();
     
-    // Sync data asynchronously
-    setTimeout(async () => {
+    // Update totalSolved in background
+    setImmediate(async () => {
       try {
-        await codeforcesService.syncStudentData(student);
+        const totalSolved = await getFastTotalSolved(cfHandle);
+        await Student.findByIdAndUpdate(student._id, { totalSolved });
       } catch (error) {
-        console.error('Background sync error:', error);
+        console.error('Background update error:', error);
       }
-    }, 100);
+    });
     
     res.json(student);
   } catch (error) {
@@ -224,7 +320,7 @@ router.put('/:id/email-reminders', async (req, res) => {
   }
 });
 
-// Get student profile data
+// Get student profile data (FAST VERSION)
 router.get('/:id/profile', async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
@@ -232,10 +328,13 @@ router.get('/:id/profile', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    const emailCount = await EmailLog.countDocuments({
-      studentId: student._id,
-      emailType: 'inactivity_reminder'
-    });
+    // Parallel queries for speed
+    const [emailCount] = await Promise.all([
+      EmailLog.countDocuments({
+        studentId: student._id,
+        emailType: 'inactivity_reminder'
+      })
+    ]);
 
     res.json({
       student,
@@ -246,7 +345,7 @@ router.get('/:id/profile', async (req, res) => {
   }
 });
 
-// Get contest history
+// Get contest history (OPTIMIZED)
 router.get('/:id/contests', async (req, res) => {
   try {
     const { days = 365 } = req.query;
@@ -258,70 +357,42 @@ router.get('/:id/contests', async (req, res) => {
 
     const daysAgo = new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000);
     
-    const contests = await Submission.aggregate([
-      {
-        $match: {
-          cfHandle: student.cfHandle,
-          submissionTimeSeconds: { $gte: daysAgo.getTime() / 1000 },
-          ratingChange: { $ne: null }
-        }
-      },
-      {
-        $sort: { submissionTimeSeconds: -1 }
-      },
-      {
-        $group: {
-          _id: '$contestId',
-          contestName: { $first: '$contestName' },
-          ratingChange: { $first: '$ratingChange' },
-          rank: { $first: '$rank' },
-          submissionTime: { $first: '$submissionTimeSeconds' },
-          problemsSolved: {
-            $sum: {
-              $cond: [{ $eq: ['$verdict', 'OK'] }, 1, 0]
-            }
-          },
-          totalProblems: { $first: '$totalProblems' }
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          contestName: 1,
-          ratingChange: 1,
-          rank: 1,
-          submissionTime: 1,
-          problemsSolved: 1,
-          totalProblems: {
-            $ifNull: ['$totalProblems', 6]
-          }
-        }
-      },
-      {
-        $sort: { submissionTime: -1 }
-      }
-    ]);
-
-    const ratingHistory = await Submission.find({
+    // Optimized query - get contest data directly
+    const contests = await Submission.find({
       cfHandle: student.cfHandle,
-      ratingChange: { $ne: null },
-      submissionTimeSeconds: { $gte: daysAgo.getTime() / 1000 }
+      submissionTimeSeconds: { $gte: daysAgo.getTime() / 1000 },
+      ratingChange: { $ne: null }
     })
-    .select('submissionTimeSeconds ratingChange')
-    .sort({ submissionTimeSeconds: 1 });
+    .select('contestId contestName ratingChange rank submissionTimeSeconds')
+    .sort({ submissionTimeSeconds: -1 })
+    .limit(50); // Limit for performance
+
+    // Get rating progression efficiently
+    const ratingHistory = contests.map(contest => ({
+      time: contest.submissionTimeSeconds * 1000,
+      ratingChange: contest.ratingChange,
+      contestName: contest.contestName
+    }));
 
     let currentRating = student.currentRating;
     const ratingProgression = ratingHistory.reverse().map(entry => {
       const rating = currentRating;
       currentRating -= entry.ratingChange;
       return {
-        time: entry.submissionTimeSeconds * 1000,
-        rating: rating
+        time: entry.time,
+        rating: rating,
+        contestName: entry.contestName
       };
     }).reverse();
 
     res.json({
-      contests,
+      contests: contests.map(c => ({
+        contestId: c.contestId,
+        contestName: c.contestName,
+        ratingChange: c.ratingChange,
+        rank: c.rank,
+        submissionTime: c.submissionTimeSeconds
+      })),
       ratingProgression
     });
   } catch (error) {
@@ -329,19 +400,33 @@ router.get('/:id/contests', async (req, res) => {
   }
 });
 
-// Sync all students data (useful for updating totalSolved for existing students)
+// OPTIMIZED: Batch update all students
 router.post('/sync-all', async (req, res) => {
   try {
     const students = await Student.find({});
     let updated = 0;
     
-    for (const student of students) {
-      try {
-        const totalSolved = await getTotalSolvedProblems(student.cfHandle);
-        await Student.findByIdAndUpdate(student._id, { totalSolved });
-        updated++;
-      } catch (error) {
-        console.error(`Failed to update ${student.name}:`, error.message);
+    // Process in batches for better performance
+    const batchSize = 5;
+    for (let i = 0; i < students.length; i += batchSize) {
+      const batch = students.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (student) => {
+        try {
+          const totalSolved = await getFastTotalSolved(student.cfHandle);
+          await Student.findByIdAndUpdate(student._id, { 
+            totalSolved,
+            lastDataSync: new Date()
+          });
+          updated++;
+        } catch (error) {
+          console.error(`Failed to update ${student.name}:`, error.message);
+        }
+      }));
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < students.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
