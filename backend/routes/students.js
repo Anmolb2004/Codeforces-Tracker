@@ -43,48 +43,48 @@ router.post('/', async (req, res) => {
     }
     
     // Check if CF handle exists (quick validation)
+    let userInfo;
     try {
-      await codeforcesService.fetchUserInfo(cfHandle);
+      userInfo = await codeforcesService.fetchUserInfo(cfHandle);
     } catch (error) {
       return res.status(400).json({ error: 'Invalid Codeforces handle' });
     }
     
-    // Create student with basic info first
+    // Get total solved problems count immediately
+    let totalSolved = 0;
+    try {
+      // Get all accepted submissions for this user
+      const acceptedSubmissions = await Submission.distinct('problemId', {
+        cfHandle: cfHandle,
+        verdict: 'OK'
+      });
+      totalSolved = acceptedSubmissions.length;
+    } catch (error) {
+      console.error('Error getting total solved problems:', error);
+      // We'll continue with 0 if there's an error
+    }
+    
+    // Create student with all info
     const student = new Student({
       name,
       cfHandle,
       email,
       phoneNumber: phoneNumber || "",
-      currentRating: 0, // Will be updated by sync
-      maxRating: 0,     // Will be updated by sync
-      rank: 'unrated',  // Will be updated by sync
-      totalSolved: 0    // Will be updated by sync
+      currentRating: userInfo.rating || 0,
+      maxRating: userInfo.maxRating || 0,
+      rank: userInfo.rank || 'unrated',
+      totalSolved: totalSolved
     });
 
     await student.save();
     
-    // Return the student immediately
+    // Return the student with all data
     res.status(201).json(student);
     
-    // Sync data asynchronously (don't wait for this)
+    // Sync detailed data asynchronously (don't wait for this)
     setTimeout(async () => {
       try {
-        const userInfo = await codeforcesService.fetchUserInfo(cfHandle);
-        
-        // Get total solved problems count
-        const totalSolved = await getTotalSolvedProblems(cfHandle);
-        
-        // Update student with CF data
-        await Student.findByIdAndUpdate(student._id, {
-          currentRating: userInfo.rating || 0,
-          maxRating: userInfo.maxRating || 0,
-          rank: userInfo.rank || 'unrated',
-          totalSolved: totalSolved || 0
-        });
-        
-        // Sync submissions data
         await codeforcesService.syncStudentData(student);
-        
         console.log(`Background sync completed for student: ${student.name}`);
       } catch (error) {
         console.error(`Background sync failed for student ${student.name}:`, error.message);

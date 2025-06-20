@@ -495,6 +495,7 @@ const handleAddStudent = async (e) => {
                           Cancel
                         </button>
                       </td>
+                      console.log(student);
                     </>
                   ) : (
                     // View Mode
