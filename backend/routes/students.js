@@ -33,6 +33,7 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/problems', problemController.getProblemStats);
 
 // Add new student
+// In your server route
 router.post('/', async (req, res) => {
   try {
     const { name, cfHandle, email, phoneNumber } = req.body;
@@ -52,7 +53,10 @@ router.post('/', async (req, res) => {
 
     await student.save();
     await codeforcesService.syncStudentData(student);
-    res.status(201).json(student);
+    
+    // Fetch the complete student data after sync
+    const completeStudent = await Student.findById(student._id);
+    res.status(201).json(completeStudent);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

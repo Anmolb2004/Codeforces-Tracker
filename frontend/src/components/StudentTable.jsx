@@ -40,17 +40,19 @@ const StudentTable = () => {
     }
   };
 
-  const handleAddStudent = async (e) => {
+ const handleAddStudent = async (e) => {
   e.preventDefault();
   try {
-    const response = await apiCall('/students', {
+    await apiCall('/students', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(newStudent) // Remove the phoneNumber override
+      body: JSON.stringify(newStudent)
     });
-    setStudents(prevStudents => [...prevStudents, response]);
+    
+    // Refetch all students to ensure we have the latest data
+    await fetchStudents();
     
     setNewStudent({ name: '', cfHandle: '', email: '', phoneNumber: '' });
     setShowAddForm(false);
