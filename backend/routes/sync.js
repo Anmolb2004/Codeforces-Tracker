@@ -6,12 +6,12 @@ const problemUpdateService = require('../services/problemUpdateService');
 const mongoose = require('mongoose');
 
 // Get cron job status
-router.get('/status', (req, res) => {
-  res.json({
-    syncStatus: cronService.getJobStatus(),
-    problemUpdateStatus: problemUpdateService.getStatus()
-  });
-});
+// router.get('/status', (req, res) => {
+//   res.json({
+//     syncStatus: cronService.getJobStatus(),
+//     problemUpdateStatus: problemUpdateService.getStatus()
+//   });
+// });
 
 // Add to your syncRoutes.js or create a new health route
 // router.get('/health', (req, res) => {

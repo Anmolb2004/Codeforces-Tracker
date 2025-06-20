@@ -7,30 +7,30 @@ const codeforcesService = require('../services/codeforcesService');
 const problemController = require('../services/problemController');
 
 // Get all students
-router.get('/', async (req, res) => {
-  try {
-    const students = await Student.find({}).sort({ name: 1 });
-    res.json(students);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// router.get('/', async (req, res) => {
+//   try {
+//     const students = await Student.find({}).sort({ name: 1 });
+//     res.json(students);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Get single student
-router.get('/:id', async (req, res) => {
-  try {
-    const student = await Student.findById(req.params.id);
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
-    res.json(student);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// router.get('/:id', async (req, res) => {
+//   try {
+//     const student = await Student.findById(req.params.id);
+//     if (!student) {
+//       return res.status(404).json({ error: 'Student not found' });
+//     }
+//     res.json(student);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Get student problem stats (using controller)
-router.get('/:id/problems', problemController.getProblemStats);
+// router.get('/:id/problems', problemController.getProblemStats);
 
 // Add new student
 // router.post('/', async (req, res) => {
@@ -59,92 +59,92 @@ router.get('/:id/problems', problemController.getProblemStats);
 // });
 
 // Update student
-router.put('/:id', async (req, res) => {
-  try {
-    const { name, email, phoneNumber, cfHandle } = req.body;
+// router.put('/:id', async (req, res) => {
+//   try {
+//     const { name, email, phoneNumber, cfHandle } = req.body;
     
-    const student = await Student.findById(req.params.id);
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
+//     const student = await Student.findById(req.params.id);
+//     if (!student) {
+//       return res.status(404).json({ error: 'Student not found' });
+//     }
 
-    // Update fields
-    if (name) student.name = name;
-    if (email) student.email = email;
-    if (phoneNumber !== undefined) student.phoneNumber = phoneNumber;
+//     // Update fields
+//     if (name) student.name = name;
+//     if (email) student.email = email;
+//     if (phoneNumber !== undefined) student.phoneNumber = phoneNumber;
     
-    // If CF handle changed, validate and sync
-    if (cfHandle && cfHandle !== student.cfHandle) {
-      const userInfo = await codeforcesService.fetchUserInfo(cfHandle);
-      student.cfHandle = cfHandle;
-      student.currentRating = userInfo.rating || 0;
-      student.maxRating = userInfo.maxRating || 0;
-      student.rank = userInfo.rank || 'unrated';
-      await codeforcesService.syncStudentData(student);
-    }
+//     // If CF handle changed, validate and sync
+//     if (cfHandle && cfHandle !== student.cfHandle) {
+//       const userInfo = await codeforcesService.fetchUserInfo(cfHandle);
+//       student.cfHandle = cfHandle;
+//       student.currentRating = userInfo.rating || 0;
+//       student.maxRating = userInfo.maxRating || 0;
+//       student.rank = userInfo.rank || 'unrated';
+//       await codeforcesService.syncStudentData(student);
+//     }
 
-    await student.save();
-    res.json(student);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+//     await student.save();
+//     res.json(student);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 // Delete student
-router.delete('/:id', async (req, res) => {
-  try {
-    const student = await Student.findByIdAndDelete(req.params.id);
+// router.delete('/:id', async (req, res) => {
+//   try {
+//     const student = await Student.findByIdAndDelete(req.params.id);
     
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
+//     if (!student) {
+//       return res.status(404).json({ error: 'Student not found' });
+//     }
 
-    await Submission.deleteMany({ cfHandle: student.cfHandle });
-    res.json({ message: 'Student deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+//     await Submission.deleteMany({ cfHandle: student.cfHandle });
+//     res.json({ message: 'Student deleted successfully' });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Update CF handle
-router.put('/:id/handle', async (req, res) => {
-  try {
-    const { cfHandle } = req.body;
-    const student = await Student.findById(req.params.id);
+// router.put('/:id/handle', async (req, res) => {
+//   try {
+//     const { cfHandle } = req.body;
+//     const student = await Student.findById(req.params.id);
     
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
+//     if (!student) {
+//       return res.status(404).json({ error: 'Student not found' });
+//     }
 
-    await codeforcesService.fetchUserInfo(cfHandle);
-    student.cfHandle = cfHandle;
-    await student.save();
-    await codeforcesService.syncStudentData(student);
-    res.json(student);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+//     await codeforcesService.fetchUserInfo(cfHandle);
+//     student.cfHandle = cfHandle;
+//     await student.save();
+//     await codeforcesService.syncStudentData(student);
+//     res.json(student);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 // Toggle email reminders
-router.put('/:id/email-reminders', async (req, res) => {
-  try {
-    const { enabled } = req.body;
-    const student = await Student.findByIdAndUpdate(
-      req.params.id,
-      { emailRemindersEnabled: enabled },
-      { new: true }
-    );
+// router.put('/:id/email-reminders', async (req, res) => {
+//   try {
+//     const { enabled } = req.body;
+//     const student = await Student.findByIdAndUpdate(
+//       req.params.id,
+//       { emailRemindersEnabled: enabled },
+//       { new: true }
+//     );
     
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
+//     if (!student) {
+//       return res.status(404).json({ error: 'Student not found' });
+//     }
     
-    res.json(student);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+//     res.json(student);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Get student profile data
 // router.get('/:id/profile', async (req, res) => {

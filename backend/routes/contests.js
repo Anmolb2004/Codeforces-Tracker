@@ -5,36 +5,36 @@ const Contest = require('../models/Contest');
 const Submission = require('../models/Submission');
 
 // Get all contests
-router.get('/', async (req, res) => {
-  try {
-    const { page = 1, limit = 50, type } = req.query;
-    const skip = (page - 1) * limit;
+// router.get('/', async (req, res) => {
+//   try {
+//     const { page = 1, limit = 50, type } = req.query;
+//     const skip = (page - 1) * limit;
     
-    let query = {};
-    if (type) {
-      query.type = type;
-    }
+//     let query = {};
+//     if (type) {
+//       query.type = type;
+//     }
     
-    const contests = await Contest.find(query)
-      .sort({ startTimeSeconds: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+//     const contests = await Contest.find(query)
+//       .sort({ startTimeSeconds: -1 })
+//       .skip(skip)
+//       .limit(parseInt(limit));
     
-    const total = await Contest.countDocuments(query);
+//     const total = await Contest.countDocuments(query);
     
-    res.json({
-      contests,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+//     res.json({
+//       contests,
+//       pagination: {
+//         page: parseInt(page),
+//         limit: parseInt(limit),
+//         total,
+//         pages: Math.ceil(total / limit)
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Get contest by ID
 // router.get('/:contestId', async (req, res) => {
