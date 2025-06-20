@@ -40,10 +40,21 @@ const StudentTable = () => {
     }
   };
 
- const handleAddStudent = async (e) => {
+const handleAddStudent = async (e) => {
   e.preventDefault();
+  
+  // Validate required fields
+  if (!newStudent.name.trim() || !newStudent.email.trim() || !newStudent.cfHandle.trim()) {
+    toast.error('Please fill in all required fields');
+    return;
+  }
+
   try {
-    await apiCall('/students', {
+    // Show loading state
+    const loadingToast = toast.loading('Adding student...');
+    
+    // Add the student
+    const response = await apiCall('/students', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,14 +62,29 @@ const StudentTable = () => {
       body: JSON.stringify(newStudent)
     });
     
-    // Refetch all students to ensure we have the latest data
-    await fetchStudents();
+    // Dismiss loading toast
+    toast.dismiss(loadingToast);
     
+    // Add the new student to the existing students array immediately
+    // This provides instant feedback while we fetch the complete data
+    setStudents(prevStudents => [...prevStudents, response]);
+    
+    // Reset form and hide it
     setNewStudent({ name: '', cfHandle: '', email: '', phoneNumber: '' });
     setShowAddForm(false);
+    
+    // Show success message
     toast.success('Student added successfully!');
+    
+    // Fetch all students to ensure we have the most up-to-date data
+    // This will sync any additional data that might have been processed server-side
+    await fetchStudents();
+    
   } catch (err) {
-    toast.error(`Error adding student: ${err.response?.data?.message || err.message}`);
+    // Show error message
+    const errorMessage = err.response?.data?.message || err.message || 'Failed to add student';
+    toast.error(`Error adding student: ${errorMessage}`);
+    console.error('Add student error:', err);
   }
 };
 
